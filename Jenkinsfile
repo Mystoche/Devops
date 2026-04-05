@@ -1,16 +1,34 @@
 pipeline {
-    agent any
-    stages {
-        stage('Deploy to Minikube') {
-            steps {
-                withCredentials([file(credentialsId: 'k8s', variable: 'KUBECONFIG')]) {
-                    withEnv(["PATH=$HOME:$PATH"]) {
-                        sh 'kubectl version --client'
-                        sh 'kubectl get pods'
-                        sh 'kubectl apply -f deployment.yaml'
-                    }
-                }
-            }
-        }
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: maven
+            image: maven:alpine
+            command:
+            - cat
+            tty: true
+          - name: node
+            image: node:16-alpine3.12
+            command:
+            - cat
+            tty: true
+        '''
     }
+  }
+  stages {
+    stage('Run maven') {
+      steps {
+        container('maven') {
+          sh 'mvn -version'
+        }
+        container('node') {
+          sh 'npm version'
+        }
+      }
+    }
+  }
 }
